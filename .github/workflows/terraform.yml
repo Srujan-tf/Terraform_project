@@ -1,0 +1,23 @@
+name: Terrform apply
+on:
+  push:
+    paths:
+     - 'terraform/**'
+     - '.github/workflows/terraform.yml'
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.4.6
+      - name: setup init
+        run: terraform init 
+      - name: setup validate
+        run: terraform validate
+      - name: setup plan
+        run: terraform plan 
+      - name: setup apply
+        run: terraform apply -auto approve                     
