@@ -23,9 +23,12 @@ jobs:
           terraform_version: 1.4.6
       - name: setup init
         run: terraform init 
+        working-directory: terraform
       - name: setup validate
         run: terraform validate
+        working-directory: terraform
       - name: setup plan
         run: terraform plan 
+        working-directory: terraform        
       - name: setup apply
         run: terraform apply -auto approve                     
