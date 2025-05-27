@@ -38,6 +38,7 @@ resource "aws_instance" "web" {
   ami           = var.ami_id
   instance_type = var.instance_type
   key_name = aws_key_pair.deployer.key_name
+  subnet_id = subnet-05fe6a7034ade54bb
   vpc_security_group_ids = [ aws_security_group.app_sg.id ]
   user_data = <<-EOF
               #!/bin/bash
