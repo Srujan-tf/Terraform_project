@@ -53,7 +53,7 @@ resource "aws_key_pair" "deployer" {
 resource "aws_security_group" "app_sg" {
   name        = "javaapp-sg"
   description = "allow ssh and http"
-
+  vpc_id = aws_vpc.main_vpc.id
   ingress {
     description = "Allow SSH"
     from_port   = 22
