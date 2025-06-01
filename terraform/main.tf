@@ -46,10 +46,6 @@ resource "aws_route_table_association" "public_assoc" {
   subnet_id      = aws_subnet.public_subnet.id
   route_table_id = aws_route_table.public_rt.id
 }
-resource "aws_key_pair" "deployer" {
-  key_name   = "deployer-key"
-  public_key = file(var.public_key_path)
-}
 resource "aws_security_group" "app_sg" {
   name        = "javaapp-sg"
   description = "allow ssh and http"
@@ -82,7 +78,7 @@ resource "aws_security_group" "app_sg" {
 resource "aws_instance" "web" {
   ami           = var.ami_id
   instance_type = var.instance_type
-  key_name = aws_key_pair.deployer.key_name
+  key_name = "eksprojectkeypair"
   subnet_id = aws_subnet.public_subnet.id
   vpc_security_group_ids = [ aws_security_group.app_sg.id ]
   user_data = <<-EOF
