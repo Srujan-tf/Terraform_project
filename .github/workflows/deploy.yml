@@ -1,58 +1,73 @@
 name: build and deploy java app
+
 on:
   push:
     branches:
       - main
+
 jobs:
   Build-Deploy:
     environment: qa
     runs-on: ubuntu-latest
+
     steps:
-      - name: checkout repositry
+      - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: setupjava
+
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu' # See 'Supported distributions' for available options
-          java-version: '21'    
-      - name: Build With Maven
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Build with Maven
         run: mvn clean package -DskipTests=false
-      - name: Config AWS Creds
-        uses: aws-actions/configure-aws-credentials@v3   
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}   
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Manual Login to Amazon ECR
         run: |
-         aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
-         docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-      - name: Build Docker image
+      - name: Build Docker Image
         run: |
-         IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}
-         docker build -t $IMAGE_URI:latest .
+          IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}
+          docker build -t $IMAGE_URI:latest .
 
-      - name: Push Docker image to ECR
+      - name: Push Docker Image to ECR
         run: |
-         IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}
-         docker push $IMAGE_URI:latest        
+          IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}
+          docker push $IMAGE_URI:latest
+
+      # Docker Hub steps commented out
       # - name: Login to Docker Hub
-      #   uses: docker/login-action@v2            
+      #   uses: docker/login-action@v2
       #   with:
       #     username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #     password: ${{ secrets.DOCKERHUB_PASSWORD }}    
-      # - name: Build docker image
+      #     password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      # - name: Build Docker Image for Docker Hub
       #   run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/java-demo:latest .
-      # - name: Push docker image
-      #   run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/java-demo:latest       
-      - name: SSH To EC2 and run container 
+
+      # - name: Push Docker Image to Docker Hub
+      #   run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/java-demo:latest
+
+      - name: SSH to EC2 and Run Container
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_PUBLIC_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-           docker pull $IMAGE_URI:latest
-           docker stop java-app || true && docker rm java-app || true
-           docker run -d -p 80:8080 app $IMAGE_URI:latest
+            IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+              docker login --username AWS --password-stdin $IMAGE_URI
+            docker pull $IMAGE_URI:latest
+            docker stop java-app || true && docker rm java-app || true
+            docker run -d -p 80:8080 --name java-app $IMAGE_URI:latest
